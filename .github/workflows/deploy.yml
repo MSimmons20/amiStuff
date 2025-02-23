@@ -1,4 +1,4 @@
-name: Build and Deploy AMI
+name: Build and Deploy AMI & Terraform
 
 on:
   push:
@@ -6,39 +6,63 @@ on:
       - main
 
 jobs:
-  build:
+  packer-build:
+    name: Build & Publish Packer Images
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Repo
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Install Packer & Terraform
+      - name: Install Dependencies
         run: |
-          curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo apt-key add -
-          sudo apt-add-repository "deb [arch=amd64] https://apt.releases.hashicorp.com $(lsb_release -cs) main"
-          sudo apt update && sudo apt install -y packer terraform
+          sudo apt update
+          sudo apt install -y packer terraform awscli
 
-      - name: Build HCP Packer Image
+      - name: Build AWS AMI with Packer
+        env:
+          HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
+          HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          export HCP_CLIENT_ID=${{ secrets.HCP_CLIENT_ID }}
-          export HCP_CLIENT_SECRET=${{ secrets.HCP_CLIENT_SECRET }}
-          packer init ubuntu-hcp.pkr.hcl
-          packer validate ubuntu-hcp.pkr.hcl
-          packer build ubuntu-hcp.pkr.hcl
+          packer init aws-ami-ansible.pkr.hcl
+          packer build aws-ami-ansible.pkr.hcl
+          packer init aws-ami.pkr.hcl
+          packer build aws-ami.pkr.hcl
 
-  deploy:
-    needs: build
+      - name: Build Docker Ubuntu Image
+        run: |
+          packer init docker-ubuntu.pkr.hcl
+          packer build docker-ubuntu.pkr.hcl
+
+  terraform-deploy:
+    name: Deploy Infrastructure with Terraform
+    needs: packer-build
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Repo
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Deploy with Terraform
+      - name: Install Terraform
         run: |
-          export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-          export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          export HCP_CLIENT_ID=${{ secrets.HCP_CLIENT_ID }}
-          export HCP_CLIENT_SECRET=${{ secrets.HCP_CLIENT_SECRET }}
+          sudo apt update
+          sudo apt install -y terraform
+
+      - name: Configure AWS Credentials
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+          aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+          aws configure set default.region us-east-1
+
+      - name: Initialize & Apply Terraform
+        env:
+          HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
+          HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
+        run: |
           terraform init
-          terraform validate
           terraform apply -auto-approve
