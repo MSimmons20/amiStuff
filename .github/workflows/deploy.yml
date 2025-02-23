@@ -17,7 +17,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt update
-          
+
           # Install HashiCorp Repo for Packer & Terraform
           sudo apt install -y gpg wget software-properties-common
           wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -25,10 +25,19 @@ jobs:
           sudo apt update
           sudo apt install -y packer terraform
 
-          # Install AWS CLI from AWS Official Repo
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
+      - name: Install or Update AWS CLI
+        run: |
+          if aws --version > /dev/null 2>&1; then
+            echo "AWS CLI is already installed. Updating..."
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip -q awscliv2.zip
+            sudo ./aws/install --update
+          else
+            echo "Installing AWS CLI..."
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip -q awscliv2.zip
+            sudo ./aws/install
+          fi
           aws --version
 
       - name: Build AWS AMI with Packer
