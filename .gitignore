@@ -1,0 +1,26 @@
+# Ignore Terraform state files & backups
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Ignore Packer temporary files
+packer_cache/
+*.pkrvars.hcl
+*.pkr.hcl.backup
+
+# Ignore environment variables & credentials
+.env
+*.pem
+*.key
+aws-credentials.json
+
+# Ignore IDE/Editor files
+.vscode/
+.idea/
+.DS_Store
+
+# Ignore logs & system files
+*.log
+*.bak
+*.swp
