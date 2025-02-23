@@ -19,38 +19,27 @@ jobs:
           sudo apt update
 
           # Install HashiCorp Repo for Packer & Terraform
-          sudo apt install -y gpg wget software-properties-common
+          sudo apt install -y gpg wget software-properties-common unzip
           wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
           sudo apt update
-          sudo apt install -y packer terraform
+          sudo apt install -y packer terraform awscli
 
-      - name: Install or Update AWS CLI
+      - name: Set Environment Variables for HCP
         run: |
-          if aws --version > /dev/null 2>&1; then
-            echo "AWS CLI is already installed. Updating..."
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip -q awscliv2.zip
-            sudo ./aws/install --update
-          else
-            echo "Installing AWS CLI..."
-            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-            unzip -q awscliv2.zip
-            sudo ./aws/install
-          fi
-          aws --version
+          echo "Setting HCP credentials..."
+          echo "HCP_CLIENT_ID=${{ secrets.HCP_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "HCP_CLIENT_SECRET=${{ secrets.HCP_CLIENT_SECRET }}" >> $GITHUB_ENV
 
-      - name: Build AWS AMI with Packer
+      - name: Initialize and Build AWS AMI with Packer
         env:
-          HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
-          HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
+          HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
         run: |
           packer init ami/aws-ami-ansible.pkr.hcl
           packer build ami/aws-ami-ansible.pkr.hcl
-          packer init ami/aws-ami.pkr.hcl
-          packer build ami/aws-ami.pkr.hcl
 
       - name: Build Docker Ubuntu Image
         run: |
