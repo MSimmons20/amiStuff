@@ -25,11 +25,19 @@ jobs:
           sudo apt update
           sudo apt install -y packer terraform
 
-      - name: Install AWS CLI
+      - name: Install or Update AWS CLI
         run: |
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
+         if aws --version > /dev/null 2>&1; then
+            echo "AWS CLI already installed. Updating..."
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install --update
+         else
+            echo "Installing AWS CLI..."
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
+         fi
           aws --version
         
 
