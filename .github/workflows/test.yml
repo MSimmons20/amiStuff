@@ -34,3 +34,4 @@ jobs:
         run: |
          echo "HCP_CLIENT_ID=${HCP_CLIENT_ID}"
          echo "HCP_CLIENT_SECRET=${HCP_CLIENT_SECRET}"
+         
